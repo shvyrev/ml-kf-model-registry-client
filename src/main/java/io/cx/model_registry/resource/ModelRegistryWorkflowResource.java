@@ -7,6 +7,8 @@ import io.cx.model_registry.dto.workflows.ModelWithVersionCreateResult;
 import io.cx.model_registry.service.ModelRegistryOrchestrationService;
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -23,13 +25,17 @@ public class ModelRegistryWorkflowResource {
 
     @POST
     @Path("/model-with-version")
-    public Uni<ModelWithVersionCreateResult> createModelWithVersion(ModelWithVersionCreateRequest request) {
+    public Uni<ModelWithVersionCreateResult> createModelWithVersion(
+            @Valid @NotNull(message = "Request body must be provided") ModelWithVersionCreateRequest request
+    ) {
         return orchestrationService.createModelWithVersion(request);
     }
 
     @POST
     @Path("/deploy-model-version")
-    public Uni<DeployModelVersionResult> deployModelVersion(DeployModelVersionRequest request) {
+    public Uni<DeployModelVersionResult> deployModelVersion(
+            @Valid @NotNull(message = "Request body must be provided") DeployModelVersionRequest request
+    ) {
         return orchestrationService.deployModelVersion(request);
     }
 }

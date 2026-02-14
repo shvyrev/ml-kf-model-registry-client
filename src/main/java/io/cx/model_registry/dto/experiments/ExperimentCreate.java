@@ -1,13 +1,12 @@
 package io.cx.model_registry.dto.experiments;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.cx.model_registry.dto.BaseResourceCreate;
-import io.cx.model_registry.dto.metadata.MetadataValue;
+import jakarta.validation.constraints.AssertTrue;
 import lombok.*;
 import lombok.experimental.Accessors;
-
-import java.util.Map;
 
 /**
  * DTO для создания нового эксперимента в Model Registry.
@@ -36,4 +35,10 @@ public class ExperimentCreate extends BaseResourceCreate {
      */
     @JsonProperty("state")
     private ExperimentState state;
+
+    @AssertTrue(message = "'name' must be provided")
+    @JsonIgnore
+    public boolean isNameValid() {
+        return name() != null && !name().isBlank();
+    }
 }

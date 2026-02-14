@@ -3,11 +3,9 @@ package io.cx.model_registry.dto.servemodel;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.cx.model_registry.dto.BaseResourceCreate;
-import io.cx.model_registry.dto.metadata.MetadataValue;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import lombok.experimental.Accessors;
-
-import java.util.Map;
 
 /**
  * DTO для создания нового действия обслуживания модели (ServeModel) в Model Registry.
@@ -31,6 +29,7 @@ public class ServeModelCreate extends BaseResourceCreate {
      * Обязательное поле.
      */
     @JsonProperty("modelVersionId")
+    @NotBlank(message = "'modelVersionId' must be provided")
     private String modelVersionId;
 
     /**

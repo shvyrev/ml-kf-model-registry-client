@@ -5,20 +5,25 @@ import io.cx.model_registry.client.ModelClient;
 import io.cx.model_registry.client.ServeModelClient;
 import io.cx.model_registry.client.ServingEnvironmentClient;
 import io.cx.model_registry.client.VersionClient;
-import io.cx.model_registry.dto.inferenceservices.InferenceService;
 import io.cx.model_registry.dto.models.RegisteredModel;
-import io.cx.model_registry.dto.servemodel.ServeModel;
-import io.cx.model_registry.dto.servingenvironment.ServingEnvironment;
-import io.cx.model_registry.dto.versions.ModelVersion;
 import io.cx.model_registry.dto.workflows.DeployModelVersionRequest;
 import io.cx.model_registry.dto.workflows.DeployModelVersionResult;
 import io.cx.model_registry.dto.workflows.ModelWithVersionCreateRequest;
 import io.cx.model_registry.dto.workflows.ModelWithVersionCreateResult;
+import io.cx.model_registry.exceptions.RestClientException;
+import io.cx.model_registry.service.idempotency.WorkflowIdempotencyService;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.ProcessingException;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
+
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
+import java.time.Duration;
+import java.util.function.Supplier;
 
 @ApplicationScoped
 public class ModelRegistryOrchestrationService {
@@ -43,21 +48,86 @@ public class ModelRegistryOrchestrationService {
     @RestClient
     ServeModelClient serveModelClient;
 
-    public Uni<ModelWithVersionCreateResult> createModelWithVersion(ModelWithVersionCreateRequest request) {
-        if (request == null || request.model() == null || request.version() == null) {
-            throw new BadRequestException("Both 'model' and 'version' must be provided");
-        }
+    @Inject
+    WorkflowIdempotencyService idempotencyService;
 
-        return modelClient.createRegisteredModel(request.model())
-                .map(response -> response.readEntity(RegisteredModel.class))
+    @ConfigProperty(name = "orchestration.retry.max-retries", defaultValue = "3")
+    int retryMaxRetries;
+
+    @ConfigProperty(name = "orchestration.retry.initial-backoff", defaultValue = "PT0.2S")
+    Duration retryInitialBackoff;
+
+    @ConfigProperty(name = "orchestration.retry.max-backoff", defaultValue = "PT3S")
+    Duration retryMaxBackoff;
+
+    public Uni<ModelWithVersionCreateResult> createModelWithVersion(ModelWithVersionCreateRequest request) {
+        validateCreateModelWithVersionRequest(request);
+        return createModelWithVersionInternal(request);
+    }
+
+    public Uni<ModelWithVersionCreateResult> createModelWithVersionIdempotent(ModelWithVersionCreateRequest request) {
+        validateCreateModelWithVersionRequest(request);
+        String key = resolveModelWithVersionKey(request);
+        return idempotencyService.execute(
+                "createModelWithVersion",
+                key,
+                request,
+                ModelWithVersionCreateResult.class,
+                () -> createModelWithVersionInternal(request)
+        );
+    }
+
+    public Uni<DeployModelVersionResult> deployModelVersion(DeployModelVersionRequest request) {
+        validateDeployModelVersionRequest(request);
+        return deployModelVersionInternal(request);
+    }
+
+    public Uni<DeployModelVersionResult> deployModelVersionIdempotent(DeployModelVersionRequest request) {
+        validateDeployModelVersionRequest(request);
+        String key = resolveDeployModelVersionKey(request);
+        return idempotencyService.execute(
+                "deployModelVersion",
+                key,
+                request,
+                DeployModelVersionResult.class,
+                () -> deployModelVersionInternal(request)
+        );
+    }
+
+    private Uni<ModelWithVersionCreateResult> createModelWithVersionInternal(ModelWithVersionCreateRequest request) {
+        return withRetry(() -> modelClient.createRegisteredModel(request.model())
+                .map(response -> response.readEntity(RegisteredModel.class)))
                 .chain(model -> {
                     request.version().registeredModelId(model.id());
-                    return versionClient.createModelVersion(request.version())
+                    return withRetry(() -> versionClient.createModelVersion(request.version()))
                             .map(version -> new ModelWithVersionCreateResult(model, version));
                 });
     }
 
-    public Uni<DeployModelVersionResult> deployModelVersion(DeployModelVersionRequest request) {
+    private Uni<DeployModelVersionResult> deployModelVersionInternal(DeployModelVersionRequest request) {
+        return withRetry(() -> servingEnvironmentClient.createServingEnvironment(request.servingEnvironment()))
+                .chain(servingEnvironment -> {
+                    request.inferenceService().servingEnvironmentId(servingEnvironment.id());
+
+                    return withRetry(() -> inferenceServiceClient.createInferenceService(request.inferenceService()))
+                            .chain(inferenceService ->
+                                    withRetry(() -> serveModelClient.createInferenceServiceServe(
+                                            inferenceService.id(), request.serve()))
+                                            .map(serveModel -> new DeployModelVersionResult(
+                                                    servingEnvironment,
+                                                    inferenceService,
+                                                    serveModel
+                                            )));
+                });
+    }
+
+    private void validateCreateModelWithVersionRequest(ModelWithVersionCreateRequest request) {
+        if (request == null || request.model() == null || request.version() == null) {
+            throw new BadRequestException("Both 'model' and 'version' must be provided");
+        }
+    }
+
+    private void validateDeployModelVersionRequest(DeployModelVersionRequest request) {
         if (request == null
                 || request.servingEnvironment() == null
                 || request.inferenceService() == null
@@ -69,19 +139,71 @@ public class ModelRegistryOrchestrationService {
         if (request.serve().modelVersionId() == null || request.serve().modelVersionId().isBlank()) {
             throw new BadRequestException("'serve.modelVersionId' must be provided");
         }
+    }
 
-        return servingEnvironmentClient.createServingEnvironment(request.servingEnvironment())
-                .chain(servingEnvironment -> {
-                    request.inferenceService().servingEnvironmentId(servingEnvironment.id());
+    private <T> Uni<T> withRetry(Supplier<Uni<T>> actionSupplier) {
+        return actionSupplier.get()
+                .onFailure(this::isRetryable)
+                .retry()
+                .withBackOff(retryInitialBackoff, retryMaxBackoff)
+                .atMost(retryMaxRetries);
+    }
 
-                    return inferenceServiceClient.createInferenceService(request.inferenceService())
-                            .chain(inferenceService ->
-                                    serveModelClient.createInferenceServiceServe(inferenceService.id(), request.serve())
-                                            .map(serveModel -> new DeployModelVersionResult(
-                                                    servingEnvironment,
-                                                    inferenceService,
-                                                    serveModel
-                                            )));
-                });
+    private boolean isRetryable(Throwable throwable) {
+        Throwable root = rootCause(throwable);
+        if (root instanceof RestClientException restClientException) {
+            int status = restClientException.status();
+            return status == 0 || status == 429 || status >= 500;
+        }
+        return root instanceof ConnectException
+                || root instanceof SocketTimeoutException
+                || root instanceof ProcessingException;
+    }
+
+    private Throwable rootCause(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null && current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        return current == null ? throwable : current;
+    }
+
+    private String resolveModelWithVersionKey(ModelWithVersionCreateRequest request) {
+        if (request.idempotencyKey() != null && !request.idempotencyKey().isBlank()) {
+            return request.idempotencyKey();
+        }
+        String modelStable = firstNonBlank(request.model().externalId(), request.model().name());
+        String versionStable = firstNonBlank(request.version().externalId(), request.version().name());
+        return "createModelWithVersion:" + modelStable + ":" + versionStable;
+    }
+
+    private String resolveDeployModelVersionKey(DeployModelVersionRequest request) {
+        if (request.idempotencyKey() != null && !request.idempotencyKey().isBlank()) {
+            return request.idempotencyKey();
+        }
+
+        String envStable = firstNonBlank(
+                request.servingEnvironment().externalId(),
+                request.servingEnvironment().name()
+        );
+        String inferenceStable = firstNonBlank(
+                request.inferenceService().externalId(),
+                request.inferenceService().name()
+        );
+        String serveStable = firstNonBlank(
+                request.serve().externalId(),
+                request.serve().name(),
+                request.serve().modelVersionId()
+        );
+        return "deployModelVersion:" + envStable + ":" + inferenceStable + ":" + serveStable;
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return "na";
     }
 }

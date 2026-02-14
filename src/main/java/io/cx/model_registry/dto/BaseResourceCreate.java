@@ -20,5 +20,5 @@ public class BaseResourceCreate {
     private String description;
 
     @JsonProperty("customProperties")
-    private Map<String, MetadataValue> customProperties;
+    private Map<String, @jakarta.validation.Valid MetadataValue> customProperties;
 }

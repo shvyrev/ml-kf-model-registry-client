@@ -3,11 +3,9 @@ package io.cx.model_registry.dto.inferenceservices;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.cx.model_registry.dto.BaseResourceCreate;
-import io.cx.model_registry.dto.metadata.MetadataValue;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import lombok.experimental.Accessors;
-
-import java.util.Map;
 
 /**
  * DTO для создания нового InferenceService в Model Registry.
@@ -30,6 +28,7 @@ public class InferenceServiceCreate extends BaseResourceCreate {
      * Обязательное поле.
      */
     @JsonProperty("registeredModelId")
+    @NotBlank(message = "'registeredModelId' must be provided")
     private String registeredModelId;
 
     /**

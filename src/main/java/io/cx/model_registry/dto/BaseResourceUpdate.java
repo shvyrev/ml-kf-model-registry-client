@@ -27,5 +27,5 @@ public class BaseResourceUpdate {
      * Пользовательские свойства, не определённые схемой.
      */
     @JsonProperty("customProperties")
-    private Map<String, MetadataValue> customProperties;
+    private Map<String, @jakarta.validation.Valid MetadataValue> customProperties;
 }

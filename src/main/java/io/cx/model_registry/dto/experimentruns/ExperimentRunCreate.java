@@ -3,6 +3,7 @@ package io.cx.model_registry.dto.experimentruns;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.cx.model_registry.dto.BaseResourceCreate;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +21,7 @@ import lombok.experimental.Accessors;
 public class ExperimentRunCreate extends BaseResourceCreate {
 
     @JsonProperty("experimentId")
+    @NotBlank(message = "'experimentId' must be provided")
     private String experimentId;
 
     @JsonProperty("startTimeSinceEpoch")

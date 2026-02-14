@@ -2,6 +2,7 @@ package io.cx.model_registry.dto.metadata;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,6 +23,6 @@ import lombok.NoArgsConstructor;
         @JsonSubTypes.Type(value = MetadataStructValue.class, name = "MetadataStructValue")
 })
 public abstract class MetadataValue {
+    @NotBlank(message = "'metadataType' must be provided")
     protected String metadataType;
 }
-

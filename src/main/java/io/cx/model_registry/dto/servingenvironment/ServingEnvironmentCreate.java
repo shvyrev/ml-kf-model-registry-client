@@ -1,13 +1,11 @@
 package io.cx.model_registry.dto.servingenvironment;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.cx.model_registry.dto.BaseResourceCreate;
-import io.cx.model_registry.dto.metadata.MetadataValue;
+import jakarta.validation.constraints.AssertTrue;
 import lombok.*;
 import lombok.experimental.Accessors;
-
-import java.util.Map;
 
 /**
  * DTO для создания нового ServingEnvironment в Model Registry.
@@ -24,4 +22,9 @@ import java.util.Map;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ServingEnvironmentCreate extends BaseResourceCreate {
 
+    @AssertTrue(message = "'name' must be provided")
+    @JsonIgnore
+    public boolean isNameValid() {
+        return name() != null && !name().isBlank();
+    }
 }

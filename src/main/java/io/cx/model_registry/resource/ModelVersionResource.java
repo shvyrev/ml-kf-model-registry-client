@@ -9,6 +9,9 @@ import io.cx.model_registry.service.ModelService;
 import io.cx.model_registry.service.VersionsService;
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +29,9 @@ public class ModelVersionResource {
     VersionsService versionsService;
 
     @POST
-    public Uni<ModelVersion> createModelVersion(ModelVersionCreate request) {
+    public Uni<ModelVersion> createModelVersion(
+            @Valid @NotNull(message = "Request body must be provided") ModelVersionCreate request
+    ) {
         return versionsService.createModelVersion(request);
     }
 
@@ -63,7 +68,7 @@ public class ModelVersionResource {
     @Path("/{modelVersionId}")
     public Uni<ModelVersion> updateModelVersion(
             @PathParam("modelVersionId") String modelVersionId,
-            ModelVersionUpdate update
+            @Valid @NotNull(message = "Request body must be provided") ModelVersionUpdate update
     ) {
         return versionsService.updateModelVersion(modelVersionId, update);
     }
@@ -84,8 +89,8 @@ public class ModelVersionResource {
     @Path("/{modelVersionId}/custom-properties")
     public Uni<ModelVersion> addCustomProperty(
             @PathParam("modelVersionId") String modelVersionId,
-            @QueryParam("key") String key,
-            MetadataValue value
+            @QueryParam("key") @NotBlank(message = "'key' query parameter must be provided") String key,
+            @Valid @NotNull(message = "Request body must be provided") MetadataValue value
     ) {
         return versionsService.addCustomPropertyToModelVersion(modelVersionId, key, value);
     }

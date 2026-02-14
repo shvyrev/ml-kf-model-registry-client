@@ -7,6 +7,8 @@ import io.cx.model_registry.dto.models.RegisteredModelUpdate;
 import io.cx.model_registry.service.ModelService;
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -22,7 +24,9 @@ public class RegisteredModelResource {
     ModelService modelService;
 
     @POST
-    public Uni<RegisteredModel> createModel(RegisteredModelCreate request) {
+    public Uni<RegisteredModel> createModel(
+            @Valid @NotNull(message = "Request body must be provided") RegisteredModelCreate request
+    ) {
         return modelService.createModel(request);
     }
 
@@ -60,7 +64,10 @@ public class RegisteredModelResource {
 
     @PATCH
     @Path("/{modelId}")
-    public Uni<RegisteredModel> updateModel(@PathParam("modelId") String modelId, RegisteredModelUpdate update) {
+    public Uni<RegisteredModel> updateModel(
+            @PathParam("modelId") String modelId,
+            @Valid @NotNull(message = "Request body must be provided") RegisteredModelUpdate update
+    ) {
         return modelService.updateModel(modelId, update);
     }
 

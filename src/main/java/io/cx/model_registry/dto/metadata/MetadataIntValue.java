@@ -1,5 +1,6 @@
 package io.cx.model_registry.dto.metadata;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -12,6 +13,7 @@ import lombok.experimental.Accessors;
 @NoArgsConstructor
 @AllArgsConstructor
 public class MetadataIntValue extends MetadataValue {
+    @NotBlank(message = "'int_value' must be provided")
     private String int_value;
 
     public MetadataIntValue(Long value) {

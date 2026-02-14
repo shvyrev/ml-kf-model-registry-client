@@ -9,6 +9,8 @@ import io.quarkus.funqy.Funq;
 import io.quarkus.funqy.knative.events.CloudEventMapping;
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 
 public class ModelRegistryEventFunctions {
 
@@ -20,8 +22,10 @@ public class ModelRegistryEventFunctions {
             trigger = "io.cx.model_registry.model-with-version.requested",
             responseType = "io.cx.model_registry.model-with-version.completed"
     )
-    public Uni<ModelWithVersionCreateResult> handleModelWithVersionRequested(ModelWithVersionCreateRequest request) {
-        return orchestrationService.createModelWithVersion(request);
+    public Uni<ModelWithVersionCreateResult> handleModelWithVersionRequested(
+            @Valid @NotNull(message = "Event data must be provided") ModelWithVersionCreateRequest request
+    ) {
+        return orchestrationService.createModelWithVersionIdempotent(request);
     }
 
     @Funq("deploy-model-version-workflow")
@@ -29,7 +33,9 @@ public class ModelRegistryEventFunctions {
             trigger = "io.cx.model_registry.deploy-model-version.requested",
             responseType = "io.cx.model_registry.deploy-model-version.completed"
     )
-    public Uni<DeployModelVersionResult> handleDeployModelVersionRequested(DeployModelVersionRequest request) {
-        return orchestrationService.deployModelVersion(request);
+    public Uni<DeployModelVersionResult> handleDeployModelVersionRequested(
+            @Valid @NotNull(message = "Event data must be provided") DeployModelVersionRequest request
+    ) {
+        return orchestrationService.deployModelVersionIdempotent(request);
     }
 }
