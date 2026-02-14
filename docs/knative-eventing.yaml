@@ -1,0 +1,86 @@
+# Apply order:
+# 1) kubectl apply -f docs/knative-eventing.yaml
+# 2) publish CloudEvents to Kafka topics below (structured or binary mode)
+#
+# IMPORTANT:
+# - Producer must publish valid CloudEvents with ce-type matching triggers:
+#   io.cx.model_registry.model-with-version.requested
+#   io.cx.model_registry.deploy-model-version.requested
+# - Update namespace, image and Kafka bootstrap server for your cluster.
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: model-registry
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: kf-model-registry-client
+  namespace: model-registry
+spec:
+  template:
+    spec:
+      containers:
+        - image: ghcr.io/your-org/kf-model-registry-client:latest
+          env:
+            - name: QUARKUS_PROFILE
+              value: prod
+            - name: MODEL_REGISTRY_URL
+              value: http://model-registry.model-registry.svc.cluster.local:8080
+---
+apiVersion: eventing.knative.dev/v1
+kind: Broker
+metadata:
+  name: model-registry-broker
+  namespace: model-registry
+---
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: model-with-version-trigger
+  namespace: model-registry
+spec:
+  broker: model-registry-broker
+  filter:
+    attributes:
+      type: io.cx.model_registry.model-with-version.requested
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: kf-model-registry-client
+---
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: deploy-model-version-trigger
+  namespace: model-registry
+spec:
+  broker: model-registry-broker
+  filter:
+    attributes:
+      type: io.cx.model_registry.deploy-model-version.requested
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: kf-model-registry-client
+---
+apiVersion: sources.knative.dev/v1beta1
+kind: KafkaSource
+metadata:
+  name: model-registry-workflows-source
+  namespace: model-registry
+spec:
+  consumerGroup: model-registry-workflows-cg
+  bootstrapServers:
+    - my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
+  topics:
+    - model-with-version-events
+    - deploy-model-version-events
+  sink:
+    ref:
+      apiVersion: eventing.knative.dev/v1
+      kind: Broker
+      name: model-registry-broker
