@@ -1,5 +1,7 @@
 package io.cx.model_registry.client;
 
+import io.cx.model_registry.dto.artifacts.Artifact;
+import io.cx.model_registry.dto.artifacts.ArtifactList;
 import io.cx.model_registry.dto.versions.ModelVersion;
 import io.cx.model_registry.dto.versions.ModelVersionCreate;
 import io.cx.model_registry.dto.versions.ModelVersionList;
@@ -9,10 +11,12 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.rest.client.annotation.ClientHeaderParam;
 import org.eclipse.microprofile.rest.client.annotation.RegisterClientHeaders;
+import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 @Path("/model_versions")
 @RegisterRestClient(configKey = "model-registry")
+@RegisterProvider(RestClientExceptionMapper.class)
 @RegisterClientHeaders(HttpClientHeadersFactory.class)
 public interface VersionClient {
 
@@ -23,7 +27,6 @@ public interface VersionClient {
     Uni<ModelVersion> createModelVersion(ModelVersionCreate versionCreate);
 
     @GET
-    @Path("/${registered_model_id}")
     @Produces(MediaType.APPLICATION_JSON)
     Uni<ModelVersionList> getModelVersions(
             @QueryParam("filterQuery") String filterQuery,
@@ -43,6 +46,31 @@ public interface VersionClient {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     Uni<ModelVersion> updateModelVersion(@PathParam("modelversionId") String versionId, ModelVersionUpdate versionUpdate);
+
+    @GET
+    @Path("/{modelversionId}/artifacts")
+    @Produces(MediaType.APPLICATION_JSON)
+    Uni<ArtifactList> getModelVersionArtifacts(
+            @PathParam("modelversionId") String modelVersionId,
+            @QueryParam("filterQuery") String filterQuery,
+            @QueryParam("name") String name,
+            @QueryParam("externalId") String externalId,
+            @QueryParam("artifactType") String artifactType,
+            @QueryParam("pageSize") @DefaultValue("100") Integer pageSize,
+            @QueryParam("orderBy") @DefaultValue("ID") String orderBy,
+            @QueryParam("sortOrder") @DefaultValue("ASC") String sortOrder,
+            @QueryParam("nextPageToken") String nextPageToken
+    );
+
+    @POST
+    @Path("/{modelversionId}/artifacts")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @ClientHeaderParam(name = "Content-Type", value = "application/json")
+    Uni<Artifact> upsertModelVersionArtifact(
+            @PathParam("modelversionId") String modelVersionId,
+            Artifact artifact
+    );
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)

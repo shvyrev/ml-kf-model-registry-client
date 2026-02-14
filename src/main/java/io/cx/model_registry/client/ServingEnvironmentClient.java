@@ -12,6 +12,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.rest.client.annotation.ClientHeaderParam;
 import org.eclipse.microprofile.rest.client.annotation.RegisterClientHeaders;
+import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 /**
@@ -24,6 +25,7 @@ import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
  */
 @Path("/serving_environments")
 @RegisterRestClient(configKey = "model-registry")
+@RegisterProvider(RestClientExceptionMapper.class)
 @RegisterClientHeaders(HttpClientHeadersFactory.class)
 public interface ServingEnvironmentClient {
 

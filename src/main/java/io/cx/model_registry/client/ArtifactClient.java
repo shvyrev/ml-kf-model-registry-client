@@ -21,7 +21,7 @@ import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
  */
 @Path("/artifacts")
 @RegisterRestClient(configKey = "model-registry")
-@RegisterProvider(InformativeExceptionMapper.class)
+@RegisterProvider(RestClientExceptionMapper.class)
 @RegisterClientHeaders(HttpClientHeadersFactory.class)
 public interface ArtifactClient {
 

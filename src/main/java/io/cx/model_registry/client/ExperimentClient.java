@@ -4,11 +4,15 @@ import io.cx.model_registry.dto.experiments.Experiment;
 import io.cx.model_registry.dto.experiments.ExperimentCreate;
 import io.cx.model_registry.dto.experiments.ExperimentList;
 import io.cx.model_registry.dto.experiments.ExperimentUpdate;
+import io.cx.model_registry.dto.experimentruns.ExperimentRun;
+import io.cx.model_registry.dto.experimentruns.ExperimentRunCreate;
+import io.cx.model_registry.dto.experimentruns.ExperimentRunList;
 import io.smallrye.mutiny.Uni;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.rest.client.annotation.ClientHeaderParam;
 import org.eclipse.microprofile.rest.client.annotation.RegisterClientHeaders;
+import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 /**
@@ -21,6 +25,7 @@ import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
  */
 @Path("/experiments")
 @RegisterRestClient(configKey = "model-registry")
+@RegisterProvider(RestClientExceptionMapper.class)
 @RegisterClientHeaders(HttpClientHeadersFactory.class)
 public interface ExperimentClient {
 
@@ -90,12 +95,34 @@ public interface ExperimentClient {
      * @return Обновленный эксперимент.
      */
     @PATCH
-    @Path("/experiments/{experimentId}")
+    @Path("/{experimentId}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     Uni<Experiment> updateExperiment(
             @PathParam("experimentId") String experimentId,
             ExperimentUpdate experiment
+    );
+
+    @GET
+    @Path("/{experimentId}/experiment_runs")
+    @Produces(MediaType.APPLICATION_JSON)
+    Uni<ExperimentRunList> getExperimentExperimentRuns(
+            @PathParam("experimentId") String experimentId,
+            @QueryParam("filterQuery") String filterQuery,
+            @QueryParam("pageSize") @DefaultValue("100") Integer pageSize,
+            @QueryParam("orderBy") @DefaultValue("ID") String orderBy,
+            @QueryParam("sortOrder") @DefaultValue("ASC") String sortOrder,
+            @QueryParam("nextPageToken") String nextPageToken
+    );
+
+    @POST
+    @Path("/{experimentId}/experiment_runs")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @ClientHeaderParam(name = "Content-Type", value = "application/json")
+    Uni<ExperimentRun> createExperimentExperimentRun(
+            @PathParam("experimentId") String experimentId,
+            ExperimentRunCreate experimentRun
     );
 
 

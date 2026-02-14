@@ -3,13 +3,12 @@ package io.cx.model_registry.client;
 import io.cx.model_registry.dto.servemodel.ServeModel;
 import io.cx.model_registry.dto.servemodel.ServeModelCreate;
 import io.cx.model_registry.dto.servemodel.ServeModelList;
-import io.quarkus.rest.client.reactive.ClientExceptionMapper;
 import io.smallrye.mutiny.Uni;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.rest.client.annotation.ClientHeaderParam;
 import org.eclipse.microprofile.rest.client.annotation.RegisterClientHeaders;
+import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 /**
@@ -22,6 +21,7 @@ import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
  */
 @Path("/inference_services/{inferenceserviceId}/serves")
 @RegisterRestClient(configKey = "model-registry")
+@RegisterProvider(RestClientExceptionMapper.class)
 @RegisterClientHeaders(HttpClientHeadersFactory.class)
 public interface ServeModelClient {
 
@@ -44,7 +44,7 @@ public interface ServeModelClient {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    Uni<ServeModelList> getServeModels(
+    Uni<ServeModelList> getInferenceServiceServes(
             @PathParam("inferenceserviceId") String inferenceserviceId,
             @QueryParam("filterQuery") String filterQuery,
             @QueryParam("name") String name,
@@ -70,24 +70,10 @@ public interface ServeModelClient {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @ClientHeaderParam(name = "Content-Type", value = "application/json")
-    Uni<ServeModel> createServeModel(
+    Uni<ServeModel> createInferenceServiceServe(
             @PathParam("inferenceserviceId") String inferenceserviceId,
             ServeModelCreate serveModel
     );
-
-    /**
-     * Преобразование ответа сервера в исключение.
-     * <p>
-     * Используется для унифицированной обработки ошибок HTTP.
-     * </p>
-     *
-     * @param response Ответ сервера.
-     * @return Исключение с информацией об ошибке.
-     */
-    @ClientExceptionMapper
-    static RuntimeException toException(Response response) {
-        return new IllegalStateException(response.getStatusInfo().toString());
-    }
 
 //    @ClientExceptionMapper
 //    static RuntimeException mapException(Response response, @Context RestClientRequestContext requestContext) {

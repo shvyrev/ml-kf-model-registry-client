@@ -10,6 +10,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.rest.client.annotation.ClientHeaderParam;
 import org.eclipse.microprofile.rest.client.annotation.RegisterClientHeaders;
+import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 /**
@@ -21,6 +22,7 @@ import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
  */
 @Path("/model_artifacts")
 @RegisterRestClient(configKey = "model-registry")
+@RegisterProvider(RestClientExceptionMapper.class)
 @RegisterClientHeaders(HttpClientHeadersFactory.class)
 public interface ModelArtifactClient {
 
@@ -63,7 +65,7 @@ public interface ModelArtifactClient {
      * @return Артефакт модели.
      */
     @GET
-    @Path("/modelartifactId}")
+    @Path("/{modelartifactId}")
     @Produces(MediaType.APPLICATION_JSON)
     Uni<ModelArtifact> getModelArtifact(@PathParam("modelartifactId") String modelArtifactId);
 

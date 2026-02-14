@@ -3,6 +3,7 @@ package io.cx.model_registry.client;
 import io.cx.model_registry.dto.artifacts.Artifact;
 import io.cx.model_registry.dto.artifacts.ModelArtifact;
 import io.cx.model_registry.dto.experiments.Experiment;
+import io.cx.model_registry.dto.experimentruns.ExperimentRun;
 import io.cx.model_registry.dto.inferenceservices.InferenceService;
 import io.cx.model_registry.dto.servingenvironment.ServingEnvironment;
 import io.cx.model_registry.dto.versions.ModelVersion;
@@ -13,10 +14,12 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.rest.client.annotation.RegisterClientHeaders;
+import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 @Path("")
 @RegisterRestClient(configKey = "model-registry")
+@RegisterProvider(RestClientExceptionMapper.class)
 @RegisterClientHeaders(HttpClientHeadersFactory.class)
 public interface SearchClient {
 
@@ -88,6 +91,15 @@ public interface SearchClient {
     Uni<Experiment> findExperiment(
             @QueryParam("name") String name,
             @QueryParam("externalId") String externalId
+    );
+
+    @GET
+    @Path("/experiment_run")
+    @Produces(MediaType.APPLICATION_JSON)
+    Uni<ExperimentRun> findExperimentRun(
+            @QueryParam("name") String name,
+            @QueryParam("externalId") String externalId,
+            @QueryParam("parentResourceId") String parentResourceId
     );
 
     /**

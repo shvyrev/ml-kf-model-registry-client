@@ -11,16 +11,19 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.rest.client.annotation.ClientHeaderParam;
 import org.eclipse.microprofile.rest.client.annotation.RegisterClientHeaders;
+import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
-@Path("/registered_models")
+@Path("")
 @RegisterRestClient(configKey = "model-registry")
+@RegisterProvider(RestClientExceptionMapper.class)
 @RegisterClientHeaders(HttpClientHeadersFactory.class)
 public interface ModelClient {
 
 
     // Поиск RegisteredModel по имени или externalId
     @GET
+    @Path("/registered_model")
     @Produces(MediaType.APPLICATION_JSON)
     Uni<RegisteredModel> findRegisteredModel(
             @QueryParam("name") String name,
@@ -29,6 +32,7 @@ public interface ModelClient {
 
     // Получение списка всех RegisteredModel
     @GET
+    @Path("/registered_models")
     @Produces(MediaType.APPLICATION_JSON)
     Uni<RegisteredModelList> getRegisteredModels(
             @QueryParam("filterQuery") String filterQuery,
@@ -40,6 +44,7 @@ public interface ModelClient {
 
     // Создание нового RegisteredModel
     @POST
+    @Path("/registered_models")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @ClientHeaderParam(name = "Content-Type", value = "application/json")
@@ -47,13 +52,13 @@ public interface ModelClient {
 
     // Получение RegisteredModel по ID
     @GET
-    @Path("/{registeredmodelId}")
+    @Path("/registered_models/{registeredmodelId}")
     @Produces(MediaType.APPLICATION_JSON)
     Uni<RegisteredModel> getRegisteredModel(@PathParam("registeredmodelId") String registeredModelId);
 
     // Обновление RegisteredModel
     @PATCH
-    @Path("/{registeredmodelId}")
+    @Path("/registered_models/{registeredmodelId}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     Uni<RegisteredModel> updateRegisteredModel(
@@ -63,7 +68,7 @@ public interface ModelClient {
 
     // Получение версий модели
     @GET
-    @Path("/{registeredmodelId}/versions")
+    @Path("/registered_models/{registeredmodelId}/versions")
     @Produces(MediaType.APPLICATION_JSON)
     Uni<Response> getRegisteredModelVersions(
             @PathParam("registeredmodelId") String registeredModelId,
@@ -77,7 +82,7 @@ public interface ModelClient {
     );
 
     @POST
-    @Path("/{registeredmodelId}/versions")
+    @Path("/registered_models/{registeredmodelId}/versions")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     Uni<ModelVersion> createRegisteredModelVersion(
