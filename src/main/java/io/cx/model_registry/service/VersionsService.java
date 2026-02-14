@@ -36,7 +36,7 @@ public class VersionsService {
     /**
      * Поиск версии модели по имени, externalId или parentResourceId
      */
-    public ModelVersion findModelVersion(String name, String externalId, String parentResourceId) {
+    public Uni<ModelVersion> findModelVersion(String name, String externalId, String parentResourceId) {
         return search.findModelVersion(name, externalId, parentResourceId);
     }
 

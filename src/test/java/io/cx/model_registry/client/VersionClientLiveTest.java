@@ -99,13 +99,6 @@ class VersionClientLiveTest {
         assertThat(versions.items()).isNotNull();
         assertThat(versions.items().stream().map(ModelVersion::id)).contains(created.id());
 
-        ModelVersionList listAlias = versionClient.list()
-                .await()
-                .atMost(Duration.ofSeconds(30));
-        assertThat(listAlias).isNotNull();
-        assertThat(listAlias.items()).isNotNull();
-        assertThat(listAlias.items().stream().map(ModelVersion::id)).contains(created.id());
-
         ArtifactList artifactsBefore = versionClient.getModelVersionArtifacts(
                         created.id(),
                         null,

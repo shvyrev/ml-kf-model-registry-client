@@ -7,6 +7,7 @@ import org.eclipse.microprofile.rest.client.ext.ClientHeadersFactory;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.MultivaluedMap;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 @Slf4j
@@ -22,9 +23,9 @@ public class HttpClientHeadersFactory implements ClientHeadersFactory {
 
         log.debug("Creating headers for Model Registry request");
 
-        ConfigProvider.getConfig()
+        String token = ConfigProvider.getConfig()
                 .getOptionalValue("model.registry.token", String.class)
-                .ifPresent(token -> result.add("Authorization", "Bearer " + token));
+                .orElse(null);
 
         String username = ConfigProvider.getConfig()
                 .getOptionalValue("model.registry.username", String.class)
@@ -34,17 +35,18 @@ public class HttpClientHeadersFactory implements ClientHeadersFactory {
                 .getOptionalValue("model.registry.password", String.class)
                 .orElse(null);
 
-        if (username != null && password != null) {
+        if (token != null && !token.isBlank()) {
+            result.add("Authorization", "Bearer " + token);
+        } else if (username != null && !username.isBlank() && password != null) {
             String credentials = username + ":" + password;
-            String encodedCredentials = Base64.getEncoder().encodeToString(credentials.getBytes());
+            String encodedCredentials = Base64.getEncoder()
+                    .encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
             result.add("Authorization", "Basic " + encodedCredentials);
         }
 
-        // Добавляем остальные заголовки
         result.add("Accept", "application/json");
-        result.add("Content-Type", "application/json");
 
-        log.debug("Final headers: {}", result);
+        log.debug("Headers prepared for Model Registry request");
 
         return result;
     }

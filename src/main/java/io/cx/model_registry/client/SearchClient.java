@@ -27,7 +27,7 @@ public interface SearchClient {
     @GET
     @Path("/model_version")
     @Produces(MediaType.APPLICATION_JSON)
-    ModelVersion findModelVersion(
+    Uni<ModelVersion> findModelVersion(
             @QueryParam("name") String name,
             @QueryParam("externalId") String externalId,
             @QueryParam("parentResourceId") String parentResourceId

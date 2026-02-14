@@ -32,6 +32,12 @@ public class RegisteredModelResource {
             @QueryParam("name") String name,
             @QueryParam("externalId") String externalId
     ) {
+        if (externalId != null && !externalId.isBlank()) {
+            return modelService.findModelByExternalId(externalId);
+        }
+        if (name == null || name.isBlank()) {
+            throw new BadRequestException("Either 'name' or 'externalId' must be provided");
+        }
         return modelService.findModelByName(name);
     }
 

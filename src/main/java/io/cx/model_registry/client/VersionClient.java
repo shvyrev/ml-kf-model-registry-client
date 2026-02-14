@@ -72,10 +72,6 @@ public interface VersionClient {
             Artifact artifact
     );
 
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    Uni<ModelVersionList> list();
-
 //    @ClientExceptionMapper
 //    static RuntimeException mapException(Response response, @Context RestClientRequestContext requestContext) {
 //        String url = requestContext.getUri().toString();

@@ -166,7 +166,9 @@ class SearchClientLiveTest {
         ModelArtifact modelArtifact = modelArtifactResponse.readEntity(ModelArtifact.class);
         assertThat(modelArtifact).isNotNull();
 
-        ModelVersion foundVersion = searchClient.findModelVersion(null, versionCreate.externalId(), registeredModel.id());
+        ModelVersion foundVersion = searchClient.findModelVersion(null, versionCreate.externalId(), registeredModel.id())
+                .await()
+                .atMost(Duration.ofSeconds(30));
         assertThat(foundVersion).isNotNull();
         assertThat(foundVersion.id()).isEqualTo(modelVersion.id());
 

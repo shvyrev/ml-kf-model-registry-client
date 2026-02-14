@@ -32,7 +32,7 @@ public class ModelVersionResource {
 
     @GET
     @Path("/search")
-    public ModelVersion findModelVersion(
+    public Uni<ModelVersion> findModelVersion(
             @QueryParam("name") String name,
             @QueryParam("externalId") String externalId,
             @QueryParam("parentResourceId") String parentResourceId
