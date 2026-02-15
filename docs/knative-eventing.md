@@ -9,13 +9,12 @@ Manifest: `docs/knative-eventing.yaml`
 - Events go to `Broker` `model-registry-broker`.
 - Triggers route by CloudEvent `type` to Knative Service `kf-model-registry-client`.
 - Quarkus Funqy dispatches by `@CloudEventMapping(trigger = ...)`.
-- On terminal workflow failure, service publishes `io.cx.model_registry.workflow.failed` to the same Broker.
-- DLQ trigger routes failed workflow events to Kafka topic `model-registry-workflow-dlq` via `KafkaSink`.
+- Trigger-level `delivery` retries are enabled.
+- After retries are exhausted, events are routed to `KafkaSink` DLQ topic `model-registry-workflow-dlq`.
 
 ## Required CloudEvent types
 - `io.cx.model_registry.model-with-version.requested`
 - `io.cx.model_registry.deploy-model-version.requested`
-- `io.cx.model_registry.workflow.failed` (emitted by service to DLQ route)
 
 ## Example event payloads (`data`)
 
@@ -71,4 +70,4 @@ kubectl apply -f docs/knative-eventing.yaml
 - Producer must send **valid CloudEvents** to Kafka records (structured or binary).
 - Update image, namespace and Kafka bootstrap server in YAML.
 - `idempotencyKey` is strongly recommended for at-least-once delivery.
-- This service keeps a dedup store with TTL and publishes final failed executions to Knative Broker as CloudEvents.
+- This service keeps a dedup store with TTL; DLQ is handled by Knative Trigger delivery policy.

@@ -38,14 +38,6 @@ spec:
               value: PT0.2S
             - name: ORCHESTRATION_RETRY_MAX_BACKOFF
               value: PT3S
-            - name: ORCHESTRATION_DLQ_ENABLED
-              value: "true"
-            - name: ORCHESTRATION_DLQ_EVENT_SOURCE
-              value: io.cx.model_registry.orchestrator
-            - name: ORCHESTRATION_DLQ_EVENT_TYPE
-              value: io.cx.model_registry.workflow.failed
-            - name: QUARKUS_REST_CLIENT_DLQ_BROKER_URL
-              value: http://broker-ingress.knative-eventing.svc.cluster.local/model-registry/model-registry-broker
 ---
 apiVersion: eventing.knative.dev/v1
 kind: Broker
@@ -63,6 +55,15 @@ spec:
   filter:
     attributes:
       type: io.cx.model_registry.model-with-version.requested
+  delivery:
+    retry: 5
+    backoffPolicy: exponential
+    backoffDelay: PT1S
+    deadLetterSink:
+      ref:
+        apiVersion: eventing.knative.dev/v1beta1
+        kind: KafkaSink
+        name: model-registry-workflow-dlq-sink
   subscriber:
     ref:
       apiVersion: serving.knative.dev/v1
@@ -79,27 +80,20 @@ spec:
   filter:
     attributes:
       type: io.cx.model_registry.deploy-model-version.requested
+  delivery:
+    retry: 5
+    backoffPolicy: exponential
+    backoffDelay: PT1S
+    deadLetterSink:
+      ref:
+        apiVersion: eventing.knative.dev/v1beta1
+        kind: KafkaSink
+        name: model-registry-workflow-dlq-sink
   subscriber:
     ref:
       apiVersion: serving.knative.dev/v1
       kind: Service
       name: kf-model-registry-client
----
-apiVersion: eventing.knative.dev/v1
-kind: Trigger
-metadata:
-  name: workflow-failed-dlq-trigger
-  namespace: model-registry
-spec:
-  broker: model-registry-broker
-  filter:
-    attributes:
-      type: io.cx.model_registry.workflow.failed
-  subscriber:
-    ref:
-      apiVersion: eventing.knative.dev/v1beta1
-      kind: KafkaSink
-      name: model-registry-workflow-dlq-sink
 ---
 apiVersion: sources.knative.dev/v1beta1
 kind: KafkaSource

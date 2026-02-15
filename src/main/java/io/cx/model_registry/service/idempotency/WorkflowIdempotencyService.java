@@ -19,9 +19,6 @@ public class WorkflowIdempotencyService {
     @Inject
     ObjectMapper objectMapper;
 
-    @Inject
-    WorkflowDlqPublisher dlqPublisher;
-
     @ConfigProperty(name = "orchestration.idempotency.ttl", defaultValue = "PT24H")
     Duration entryTtl;
 
@@ -57,8 +54,7 @@ public class WorkflowIdempotencyService {
 
         return action.get()
                 .invoke(result -> markSucceeded(idempotencyKey, operation, result))
-                .onFailure().call(throwable -> markFailedAndPublishDlq(
-                        idempotencyKey, operation, requestPayload, throwable));
+                .onFailure().invoke(throwable -> markFailed(idempotencyKey, operation, throwable));
     }
 
     private <T> Uni<T> resolveExisting(IdempotencyEntry existing, Class<T> resultType) {
@@ -83,21 +79,9 @@ public class WorkflowIdempotencyService {
         entries.put(key, IdempotencyEntry.succeeded(key, operation, responseJson, Instant.now()));
     }
 
-    private Uni<Void> markFailedAndPublishDlq(String key, String operation, Object requestPayload, Throwable throwable) {
+    private void markFailed(String key, String operation, Throwable throwable) {
         String errorMessage = throwable == null ? "unknown error" : throwable.getMessage();
         entries.put(key, IdempotencyEntry.failed(key, operation, errorMessage, Instant.now()));
-
-        WorkflowDlqEvent dlqEvent = new WorkflowDlqEvent(
-                key,
-                operation,
-                throwable == null ? "UnknownException" : throwable.getClass().getSimpleName(),
-                errorMessage,
-                serialize(requestPayload),
-                Instant.now()
-        );
-        return dlqPublisher.publish(dlqEvent)
-                .onFailure().recoverWithNull()
-                .replaceWithVoid();
     }
 
     private void cleanupExpired(Instant now) {
