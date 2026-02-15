@@ -30,14 +30,22 @@ spec:
               value: http://model-registry.model-registry.svc.cluster.local:8080
             - name: ORCHESTRATION_IDEMPOTENCY_TTL
               value: PT24H
-            - name: ORCHESTRATION_IDEMPOTENCY_MAX_ENTRIES
-              value: "50000"
-            - name: ORCHESTRATION_RETRY_MAX_RETRIES
-              value: "3"
-            - name: ORCHESTRATION_RETRY_INITIAL_BACKOFF
-              value: PT0.2S
-            - name: ORCHESTRATION_RETRY_MAX_BACKOFF
-              value: PT3S
+            - name: ORCHESTRATION_IDEMPOTENCY_ENABLED
+              value: "true"
+            - name: ORCHESTRATION_IDEMPOTENCY_CACHE_NAME
+              value: workflow-idempotency
+            - name: INFINISPAN_HOSTS
+              value: infinispan.model-registry.svc.cluster.local:11222
+            - name: INFINISPAN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: infinispan-auth
+                  key: username
+            - name: INFINISPAN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: infinispan-auth
+                  key: password
 ---
 apiVersion: eventing.knative.dev/v1
 kind: Broker

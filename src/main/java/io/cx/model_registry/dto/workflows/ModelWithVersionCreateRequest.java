@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.cx.model_registry.dto.models.RegisteredModelCreate;
 import io.cx.model_registry.dto.versions.ModelVersionCreate;
+import io.cx.model_registry.service.idempotency.IdempotencyEntry;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
@@ -18,7 +19,7 @@ import lombok.experimental.Accessors;
 @AllArgsConstructor
 @Accessors(chain = true, fluent = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class ModelWithVersionCreateRequest {
+public class ModelWithVersionCreateRequest implements IdempotencyKey {
 
     @JsonProperty("idempotencyKey")
     private String idempotencyKey;

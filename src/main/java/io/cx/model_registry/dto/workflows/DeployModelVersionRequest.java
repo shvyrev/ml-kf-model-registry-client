@@ -19,7 +19,7 @@ import lombok.experimental.Accessors;
 @AllArgsConstructor
 @Accessors(chain = true, fluent = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class DeployModelVersionRequest {
+public class DeployModelVersionRequest implements IdempotencyKey{
 
     @JsonProperty("idempotencyKey")
     private String idempotencyKey;

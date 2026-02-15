@@ -9,6 +9,7 @@ Manifest: `docs/knative-eventing.yaml`
 - Events go to `Broker` `model-registry-broker`.
 - Triggers route by CloudEvent `type` to Knative Service `kf-model-registry-client`.
 - Quarkus Funqy dispatches by `@CloudEventMapping(trigger = ...)`.
+- Service stores idempotency keys in external Infinispan cache (`workflow-idempotency`).
 - Trigger-level `delivery` retries are enabled.
 - After retries are exhausted, events are routed to `KafkaSink` DLQ topic `model-registry-workflow-dlq`.
 
@@ -70,4 +71,5 @@ kubectl apply -f docs/knative-eventing.yaml
 - Producer must send **valid CloudEvents** to Kafka records (structured or binary).
 - Update image, namespace and Kafka bootstrap server in YAML.
 - `idempotencyKey` is strongly recommended for at-least-once delivery.
-- This service keeps a dedup store with TTL; DLQ is handled by Knative Trigger delivery policy.
+- This service keeps dedup state in external Infinispan; DLQ is handled by Knative Trigger delivery policy.
+- Application-level retries in orchestration are disabled; retries are handled by Knative Trigger `delivery`.
