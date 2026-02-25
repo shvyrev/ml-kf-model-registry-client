@@ -6,6 +6,10 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
+import java.util.Optional;
+
+import static java.util.Optional.ofNullable;
+
 @Accessors(chain = true, fluent = true)
 @EqualsAndHashCode(callSuper = true)
 @Data
@@ -17,5 +21,10 @@ public class MetadataBoolValue extends MetadataValue {
     public MetadataBoolValue(Boolean value) {
         this.metadataType = "MetadataBoolValue";
         this.bool_value = value;
+    }
+
+    public static Optional<Boolean> optional(Object value) {
+        return ofNullable(value)
+                .map(Boolean.class::cast);
     }
 }

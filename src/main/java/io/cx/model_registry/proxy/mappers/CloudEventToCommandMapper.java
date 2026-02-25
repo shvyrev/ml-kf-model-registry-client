@@ -1,12 +1,12 @@
 package io.cx.model_registry.proxy.mappers;
 
 import io.cx.platform.events.BaseEvent;
-import io.cx.platform.events.models.ModelEventsCommand;
+import io.cx.platform.events.models.commands.ModelEventsCommand;
 import io.cx.platform.events.serde.CloudEventDeserializer;
-import io.cx.platform.events.serde.events.CreateModelCommandDeserializer;
-import io.cx.platform.events.serde.events.GetModelQueryQueryCommandDeserializer;
-import io.cx.platform.events.serde.events.ListModelsQueryCommandDeserializer;
-import io.cx.platform.events.serde.events.UpdateModelCommandDeserializer;
+import io.cx.platform.events.serde.model.commands.CreateModelCommandDeserializer;
+import io.cx.platform.events.serde.model.commands.GetModelQueryQueryCommandDeserializer;
+import io.cx.platform.events.serde.model.commands.ListModelsQueryCommandDeserializer;
+import io.cx.platform.events.serde.model.commands.UpdateModelCommandDeserializer;
 import io.quarkus.funqy.knative.events.CloudEvent;
 import io.vertx.core.json.JsonObject;
 import jakarta.annotation.PostConstruct;
