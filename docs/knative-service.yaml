@@ -1,0 +1,79 @@
+# Apply order:
+# 1) kubectl apply -f docs/knative-service.yaml
+# 2) publish CloudEvents to Kafka topics below (structured or binary mode)
+#
+# IMPORTANT:
+# - Producer must publish valid CloudEvents with ce-type matching triggers:
+#   io.cx.model_registry.model-with-version.requested
+#   io.cx.model_registry.deploy-model-version.requested
+# - Update namespace, image and Kafka bootstrap server for your cluster.
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: serverless
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: infinispan-auth
+  namespace: serverless
+type: Opaque
+stringData:
+  username: admin
+  password: admin
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: kf-model-registry-client
+  namespace: serverless
+spec:
+  template:
+    spec:
+      containers:
+        - image: dev.local/kf-model-registry-client:1.0.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: redpanda.message-broker.svc.cluster.local:9092
+            - name: QUARKUS_PROFILE
+              value: prod
+            - name: MODEL_REGISTRY_URL
+              value: http://model-registry-service.kubeflow.svc.cluster.local:8080
+            - name: ORCHESTRATION_IDEMPOTENCY_TTL
+              value: PT24H
+            - name: ORCHESTRATION_IDEMPOTENCY_ENABLED
+              value: "true"
+            - name: ORCHESTRATION_IDEMPOTENCY_CACHE_NAME
+              value: workflow-idempotency
+            - name: INFINISPAN_HOSTS
+              value: infinispan.cache.svc.cluster.local:11222
+            - name: INFINISPAN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: infinispan-auth
+                  key: username
+            - name: INFINISPAN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: infinispan-auth
+                  key: password
+---
+apiVersion: sources.knative.dev/v1
+kind: KafkaSource
+metadata:
+  name: model-registry-source
+  namespace: serverless
+spec:
+  consumerGroup: model-registry-workflows-cg-v2
+  bootstrapServers:
+    - redpanda.message-broker.svc.cluster.local:9092
+  topics:
+    - model-with-version-events
+    - deploy-model-version-events
+  sink:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: kf-model-registry-client

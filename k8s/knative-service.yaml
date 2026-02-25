@@ -1,0 +1,152 @@
+# Apply order:
+# 1) kubectl apply -f docs/knative-service.yaml
+# 2) publish CloudEvents to Kafka topics below (structured or binary mode)
+#
+# IMPORTANT:
+# - Producer must publish valid CloudEvents with ce-type matching triggers:
+#   io.cx.model_registry.model-with-version.requested
+#   io.cx.model_registry.deploy-model-version.requested
+# - Update namespace, image and Kafka bootstrap server for your cluster.
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: serverless
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: infinispan-auth
+  namespace: serverless
+type: Opaque
+stringData:
+  username: admin
+  password: admin
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: kf-model-registry-client
+  namespace: serverless
+spec:
+  template:
+    spec:
+      containers:
+        - image: dev.local/kf-model-registry-client:1.0.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: redpanda.message-broker.svc.cluster.local:9092
+            - name: QUARKUS_PROFILE
+              value: prod
+            - name: MODEL_REGISTRY_URL
+              value: http://model-registry-service.kubeflow.svc.cluster.local:8080
+            - name: ORCHESTRATION_IDEMPOTENCY_TTL
+              value: PT24H
+            - name: ORCHESTRATION_IDEMPOTENCY_ENABLED
+              value: "true"
+            - name: ORCHESTRATION_IDEMPOTENCY_CACHE_NAME
+              value: workflow-idempotency
+            - name: INFINISPAN_HOSTS
+              value: infinispan.cache.svc.cluster.local:11222
+            - name: INFINISPAN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: infinispan-auth
+                  key: username
+            - name: INFINISPAN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: infinispan-auth
+                  key: password
+---
+apiVersion: sources.knative.dev/v1
+kind: KafkaSource
+metadata:
+  name: model-registry-source
+  namespace: serverless
+  labels:
+    kafkasources.sources.knative.dev/key-type: string
+spec:
+  consumerGroup: model-registry-listener
+  bootstrapServers:
+    - redpanda.message-broker.svc.cluster.local:9092
+  topics:
+    - model-commands-out
+  delivery:
+    retry: 3
+    backoffPolicy: exponential
+    backoffDelay: PT1S
+    deadLetterSink:
+      ref:
+        apiVersion: eventing.knative.dev/v1alpha1
+        kind: KafkaSink
+        name: model-registry-dlq
+  sink:
+    ref:
+      apiVersion: eventing.knative.dev/v1
+      kind: Broker
+      name: model-registry-broker
+---
+apiVersion: eventing.knative.dev/v1
+kind: Broker
+metadata:
+  name: model-registry-broker
+  namespace: serverless
+  annotations:
+    eventing.knative.dev/broker.class: Kafka
+spec:
+  config:
+    apiVersion: v1
+    kind: ConfigMap
+    name: model-registry-broker-config
+    namespace: serverless
+  delivery:
+    backoffDelay: PT0.2S
+    backoffPolicy: exponential
+    retry: 10
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: model-registry-broker-config
+  namespace: serverless
+data:
+  bootstrap.servers: redpanda.message-broker.svc.cluster.local:9092
+  default.topic.partitions: "1"
+  default.topic.replication.factor: "1"
+---
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: model-registry-commands
+  namespace: serverless
+spec:
+  broker: model-registry-broker
+  filter:
+    attributes:
+      type: model.events.command
+  delivery:
+    retry: 3
+    backoffPolicy: exponential
+    backoffDelay: PT1S
+    deadLetterSink:
+      ref:
+        apiVersion: eventing.knative.dev/v1alpha1
+        kind: KafkaSink
+        name: model-registry-dlq
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: kf-model-registry-client
+---
+apiVersion: eventing.knative.dev/v1alpha1
+kind: KafkaSink
+metadata:
+  name: model-registry-dlq
+  namespace: serverless
+spec:
+  bootstrapServers:
+    - redpanda.message-broker.svc.cluster.local:9092
+  topic: dlq-model-registry-listener

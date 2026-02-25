@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Сборка приложения
+./mvnw clean package -DskipTests -Dgatling.skip=true
+
+# Параметры образа (теперь совпадают с твоим проектом)
+IMAGE_NAME="dev.local/kf-model-registry-client"
+IMAGE_TAG="1.0.0"
+TMP_TAR_NAME="$RANDOM.tar"
+
+# Сборка Docker-образа (JVM)
+echo "🚀 Сборка Docker-образа..."
+docker build -f src/main/docker/Dockerfile.jvm -t $IMAGE_NAME:$IMAGE_TAG .
+
+if [ $? -ne 0 ]; then
+  echo "❌ Ошибка сборки образа"
+  exit 1
+fi
+
+docker save $IMAGE_NAME:$IMAGE_TAG > $TMP_TAR_NAME
+multipass exec microk8s-vm -- sudo mkdir -p /home/ubuntu
+multipass transfer $TMP_TAR_NAME microk8s-vm:/home/ubuntu/$TMP_TAR_NAME
+multipass exec microk8s-vm -- sudo microk8s ctr image import /home/ubuntu/$TMP_TAR_NAME
+multipass exec microk8s-vm -- sudo microk8s ctr images list | grep $IMAGE_NAME
+
+rm -f $TMP_TAR_NAME
+
+# Применяем наш ручной манифест
+#echo "🚢 Деплой Knative Service..."
+#kubectl apply -f k8s/knative-service.yaml

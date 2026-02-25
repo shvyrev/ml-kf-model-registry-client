@@ -64,7 +64,7 @@ Manifest: `docs/knative-eventing.yaml`
 
 ## Apply
 ```bash
-kubectl apply -f docs/knative-eventing.yaml
+kubectl apply -f docs/knative-service.yaml
 ```
 
 ## Notes
