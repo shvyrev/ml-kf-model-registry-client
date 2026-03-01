@@ -3,7 +3,6 @@ package io.cx.model_registry.proxy.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.cx.model_registry.proxy.client.EventProducer;
-import io.cx.model_registry.proxy.dto.BaseResourceList;
 import io.cx.model_registry.proxy.dto.metadata.MetadataValue;
 import io.cx.model_registry.proxy.dto.models.RegisteredModel;
 import io.cx.model_registry.proxy.dto.models.RegisteredModelCreate;
@@ -49,8 +48,6 @@ public class ModelEventsCommandService {
     EventProducer eventProducer;
 
     public Uni<Void> handle(ModelEventsCommand command) {
-        log.info("$ handle() called with: command = [{}]", command);
-
         if (command == null) {
             log.warn("Received null ModelEventsCommand");
             return Uni.createFrom().voidItem();
@@ -64,8 +61,6 @@ public class ModelEventsCommandService {
     }
 
     private Uni<Void> handleCreate(ModelEventsCommand.CreateModelCommand command) {
-        log.info("$ handleCreate() called with: command = [{}]", command);
-
         RegisteredModelCreate request = mapper.toCreateModelRequest(command);
 
         return modelService.createModel(request)
@@ -126,7 +121,6 @@ public class ModelEventsCommandService {
     }
 
     private Uni<ModelInfo> handleConflict(WebApplicationException exception, String action, String target) {
-        log.info("$ handleConflict() called with: exception = [{}], action = [{}], target = [{}]", exception, action, target);
         Response response = exception.getResponse();
         int status = response != null ? response.getStatus() : -1;
         String body = null;
