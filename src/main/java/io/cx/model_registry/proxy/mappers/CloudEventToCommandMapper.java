@@ -3,14 +3,16 @@ package io.cx.model_registry.proxy.mappers;
 import io.cx.platform.events.BaseEvent;
 import io.cx.platform.events.models.commands.ModelEventsCommand;
 import io.cx.platform.events.serde.CloudEventDeserializer;
+import io.cx.platform.events.serde.ExtensionDeserializer;
 import io.cx.platform.events.serde.model.commands.CreateModelCommandDeserializer;
-import io.cx.platform.events.serde.model.commands.GetModelQueryQueryCommandDeserializer;
+import io.cx.platform.events.serde.model.commands.GetModelQueryCommandDeserializer;
 import io.cx.platform.events.serde.model.commands.ListModelsQueryCommandDeserializer;
 import io.cx.platform.events.serde.model.commands.UpdateModelCommandDeserializer;
 import io.quarkus.funqy.knative.events.CloudEvent;
 import io.vertx.core.json.JsonObject;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Map;
@@ -27,21 +29,24 @@ public class CloudEventToCommandMapper {
 
     public static final Map<String, Class<?>> EVENT_TO_COMMAND_MAP = new ConcurrentHashMap<>();
     public static final String DELIMITER = ":";
-    public Map<Class<?>, Function<CloudEvent<JsonObject>, CloudEventDeserializer<? extends BaseEvent>>> eventDeserializers = new ConcurrentHashMap<>();
+    public Map<Class<?>, Function<ExtensionDeserializer, CloudEventDeserializer<? extends BaseEvent>>> eventDeserializers = new ConcurrentHashMap<>();
+
+    @Inject
+    ExtensionDeserializer extensionDeserializer;
 
     @PostConstruct
     void init(){
         eventDeserializers.put(ModelEventsCommand.CreateModelCommand.class, CreateModelCommandDeserializer::new);
         eventDeserializers.put(ModelEventsCommand.UpdateModelCommand.class, UpdateModelCommandDeserializer::new);
         eventDeserializers.put(ModelEventsCommand.ListModelsQuery.class, ListModelsQueryCommandDeserializer::new);
-        eventDeserializers.put(ModelEventsCommand.GetModelQuery.class, GetModelQueryQueryCommandDeserializer::new);
+        eventDeserializers.put(ModelEventsCommand.GetModelQuery.class, GetModelQueryCommandDeserializer::new);
     }
 
     public ModelEventsCommand toModelEventCommand(CloudEvent<JsonObject> event) {
         return getOptionalSealedClass(event, ModelEventsCommand.class)
-                .map(vClass -> eventDeserializers.get(vClass))
-                .map(func -> func.apply(event))
-                .map(CloudEventDeserializer::deserialize)
+                .map(eventDeserializers::get)
+                .map(func -> func.apply(extensionDeserializer))
+                .map(deserializer -> deserializer.deserialize(event))
                 .map(ModelEventsCommand.class::cast)
                 .orElse(null);
     }

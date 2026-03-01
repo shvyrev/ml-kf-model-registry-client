@@ -1,6 +1,8 @@
 package io.cx.model_registry.proxy.dto.metadata;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -16,6 +18,8 @@ import static java.util.Optional.ofNullable;
 @Data
 @NoArgsConstructor
 public class MetadataStringValue extends MetadataValue {
+    @JsonProperty("string_value")
+    @JsonAlias("stringValue")
     @NotBlank(message = "'string_value' must be provided")
     private String string_value;
 

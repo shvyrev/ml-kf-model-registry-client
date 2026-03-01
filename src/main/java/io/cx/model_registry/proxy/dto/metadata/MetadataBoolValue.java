@@ -1,5 +1,7 @@
 package io.cx.model_registry.proxy.dto.metadata;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -15,6 +17,8 @@ import static java.util.Optional.ofNullable;
 @Data
 @NoArgsConstructor
 public class MetadataBoolValue extends MetadataValue {
+    @JsonProperty("bool_value")
+    @JsonAlias("boolValue")
     @NotNull(message = "'bool_value' must be provided")
     private Boolean bool_value;
 

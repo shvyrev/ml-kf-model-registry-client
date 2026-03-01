@@ -26,5 +26,5 @@ multipass exec microk8s-vm -- sudo microk8s ctr images list | grep $IMAGE_NAME
 rm -f $TMP_TAR_NAME
 
 # Применяем наш ручной манифест
-#echo "🚢 Деплой Knative Service..."
-#kubectl apply -f k8s/knative-service.yaml
+echo "🚢 Деплой Knative Service..."
+kubectl apply -f k8s/knative-service.yaml

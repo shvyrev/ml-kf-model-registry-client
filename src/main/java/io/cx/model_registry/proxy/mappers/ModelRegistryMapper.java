@@ -1,11 +1,9 @@
 package io.cx.model_registry.proxy.mappers;
 
+import io.cx.model_registry.proxy.dto.BaseResourceList;
 import io.cx.model_registry.proxy.dto.metadata.MetadataStringValue;
 import io.cx.model_registry.proxy.dto.metadata.MetadataValue;
-import io.cx.model_registry.proxy.dto.models.RegisteredModel;
-import io.cx.model_registry.proxy.dto.models.RegisteredModelCreate;
-import io.cx.model_registry.proxy.dto.models.RegisteredModelState;
-import io.cx.model_registry.proxy.dto.models.RegisteredModelUpdate;
+import io.cx.model_registry.proxy.dto.models.*;
 import io.cx.platform.events.models.ModelInfo;
 import io.cx.platform.events.models.commands.CreateModelCommandPayload;
 import io.cx.platform.events.models.commands.ModelEventsCommand;
@@ -14,8 +12,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
-import java.util.UUID;
+import java.util.*;
+
+import static java.util.Optional.ofNullable;
+import static java.util.function.Predicate.not;
 
 @Slf4j
 @ApplicationScoped
@@ -23,9 +23,16 @@ public class ModelRegistryMapper {
 
     public static final String DISPLAY_NAME = "display_name";
 
-    public ModelInfo toModelInfo(RegisteredModel registeredModel){
-        MetadataStringValue modelName = (MetadataStringValue) registeredModel.customProperties()
+    public ModelInfo toModelInfo(RegisteredModel registeredModel) {
+        Objects.requireNonNull(registeredModel, "registeredModel must not be null");
+        var customProperties = registeredModel.customProperties() != null
+                ? registeredModel.customProperties()
+                : new HashMap<String, MetadataValue>();
+
+        MetadataStringValue modelName = (MetadataStringValue) customProperties
                 .getOrDefault(DISPLAY_NAME, new MetadataStringValue());
+
+        log.info("$ toModelInfo !!! " + modelName);
 
         return new ModelInfo(
                 registeredModel.id(),
@@ -36,7 +43,18 @@ public class ModelRegistryMapper {
                 registeredModel.lastUpdateTimeSinceEpoch());
     }
 
-    public RegisteredModelUpdate toUpdateModelRequest(ModelEventsCommand.UpdateModelCommand command ) {
+    public List<ModelInfo> toModelInfoList(RegisteredModelList values) {
+        return ofNullable(values)
+                .map(BaseResourceList::items)
+                .filter(not(List::isEmpty))
+                .map(items -> items.stream()
+                        .filter(Objects::nonNull)
+                        .map(this::toModelInfo)
+                        .toList())
+                .orElseGet(Collections::emptyList);
+    }
+
+    public RegisteredModelUpdate toUpdateModelRequest(ModelEventsCommand.UpdateModelCommand command) {
         UpdateModelCommandPayload payload = command.payload();
 
         return (RegisteredModelUpdate) new RegisteredModelUpdate()
@@ -77,4 +95,5 @@ public class ModelRegistryMapper {
             return null;
         }
     }
+
 }

@@ -1,5 +1,7 @@
 package io.cx.model_registry.proxy.dto.metadata;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -13,6 +15,8 @@ import lombok.experimental.Accessors;
 @NoArgsConstructor
 @AllArgsConstructor
 public class MetadataIntValue extends MetadataValue {
+    @JsonProperty("int_value")
+    @JsonAlias("intValue")
     @NotBlank(message = "'int_value' must be provided")
     private String int_value;
 

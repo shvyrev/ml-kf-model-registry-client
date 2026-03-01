@@ -72,7 +72,9 @@ spec:
   bootstrapServers:
     - redpanda.message-broker.svc.cluster.local:9092
   topics:
+    - model-events-out
     - model-commands-out
+    - model-dlq-out
   delivery:
     retry: 3
     backoffPolicy: exponential
@@ -149,4 +151,30 @@ metadata:
 spec:
   bootstrapServers:
     - redpanda.message-broker.svc.cluster.local:9092
-  topic: dlq-model-registry-listener
+  topic: model-dlq-out
+---
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: model-registry-events
+  namespace: serverless
+spec:
+  broker: model-registry-broker
+  filter:
+    attributes:
+      type: model.events
+  delivery:
+    retry: 3
+    backoffPolicy: exponential
+    backoffDelay: PT1S
+    deadLetterSink:
+      ref:
+        apiVersion: eventing.knative.dev/v1alpha1
+        kind: KafkaSink
+        name: model-registry-dlq
+  subscriber:
+    ref:
+      apiVersion: v1
+      kind: Service
+      name: api-gateway
+      namespace: api-gateway

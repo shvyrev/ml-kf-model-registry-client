@@ -1,0 +1,64 @@
+model.registry.url: http://localhost:8089
+
+mp:
+  messaging:
+    outgoing:
+      model-events-out:
+        connector: smallrye-kafka
+        topic: model-events-out
+        key.serializer: org.apache.kafka.common.serialization.StringSerializer
+        value.serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+        cloud-events-mode: binary
+        cloud-events-source: "urn:service:${quarkus.application.name}"
+        cloud-events-type: "io.cx.model.with-version.create.requested"
+    connector.smallrye-kafka.bootstrap.servers: ${KAFKA_BOOTSTRAP_SERVERS:redpanda.message-broker.svc.cluster.local:9092}
+
+quarkus:
+  http:
+    port: 8080
+    host: 0.0.0.0
+  log:
+    level: INFO
+    category:
+      "io.cx.model_registry.client":
+        level: DEBUG
+      "org.eclipse.microprofile.rest.client":
+        level: DEBUG
+      "org.jboss.resteasy.reactive.client.logging":
+        level: DEBUG
+      "org.jboss.resteasy.reactive.client":
+        level: DEBUG
+      "io.cx.model_registry":
+        level: DEBUG
+  rest-client:
+    model-registry:
+      url: ${model.registry.url}/api/model_registry/v1alpha3
+      connect-timeout: 5000
+      read-timeout: 30000
+    logging:
+      scope: request-response
+      body-limit: 50
+    extensions-api:
+      logging:
+        scope: all
+      tls-configuration-name: tls-disabled
+    follow-redirects: true
+  tls:
+    tls-disabled:
+      trust-all: true
+      hostname-verification-algorithm: NONE
+  infinispan-client:
+    hosts: ${INFINISPAN_HOSTS:localhost:11222}
+    username: ${INFINISPAN_USERNAME:}
+    password: ${INFINISPAN_PASSWORD:}
+    devservices:
+      enabled: false
+
+
+
+
+orchestration:
+  idempotency:
+    enabled: true
+    cache-name: workflow-idempotency
+    ttl: PT24H

@@ -17,7 +17,7 @@ public class EventProducer extends AbstractEventProducer {
     @Channel("model-events-out")
     MutinyEmitter<byte[]> modelEventsEmitter;
 
-    public Uni<Void> publish(ModelEvents.ModelResponse ev){
+    public Uni<Void> publish(ModelEvents ev){
         return publish(modelEventsEmitter, ev);
     }
 }
