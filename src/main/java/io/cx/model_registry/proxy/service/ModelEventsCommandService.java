@@ -74,7 +74,10 @@ public class ModelEventsCommandService {
 
     private Uni<Void> handleUpdate(ModelEventsCommand.UpdateModelCommand command) {
         UpdateModelCommandPayload payload = command.payload();
+        log.info("$ !!! " + payload);
         RegisteredModelUpdate request = mapper.toUpdateModelRequest(command);
+
+        log.info("$ SUKA!!! :  {}", request);
 
         return modelService.updateModel(payload.modelId(), request)
                 .chain(registeredModel -> sendResponse(registeredModel, info -> ModelEvents.ModelResponse.of(command, info)));

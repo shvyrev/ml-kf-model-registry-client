@@ -48,7 +48,9 @@ public class ModelRegistryEventFunctions {
             return Uni.createFrom().voidItem();
         }
         ModelEventsCommand command = mapper.toModelEventCommand(event);
-        return commandService.handle(command);
+        return commandService.handle(command)
+//                TODO добавить нормальный обработчик ошибок
+                .onFailure().recoverWithUni(Uni.createFrom()::voidItem);
     }
 
 
