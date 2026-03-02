@@ -1,14 +1,10 @@
 package io.cx.model_registry.proxy.resource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.cx.model_registry.proxy.dto.workflows.DeployModelVersionRequest;
-import io.cx.model_registry.proxy.dto.workflows.DeployModelVersionResult;
-import io.cx.model_registry.proxy.dto.workflows.ModelWithVersionCreateRequest;
-import io.cx.model_registry.proxy.dto.workflows.ModelWithVersionCreateResult;
 import io.cx.model_registry.proxy.mappers.CloudEventToCommandMapper;
-import io.cx.model_registry.proxy.service.ModelEventsCommandService;
+import io.cx.model_registry.proxy.service.ModelCommandService;
+import io.cx.model_registry.proxy.service.ModelVersionCommandService;
 import io.cx.model_registry.proxy.service.ModelRegistryOrchestrationService;
-import io.cx.platform.events.models.commands.ModelEventsCommand;
 import io.quarkus.funqy.Funq;
 import io.quarkus.funqy.knative.events.CloudEvent;
 import io.quarkus.funqy.knative.events.CloudEventMapping;
@@ -21,6 +17,8 @@ import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Set;
+
+import static java.util.Optional.ofNullable;
 
 @Slf4j
 public class ModelRegistryEventFunctions {
@@ -38,53 +36,63 @@ public class ModelRegistryEventFunctions {
     CloudEventToCommandMapper mapper;
 
     @Inject
-    ModelEventsCommandService commandService;
+    ModelCommandService commandService;
+
+    @Inject
+    ModelVersionCommandService modelVersionCommandService;
 
     @Funq("handle-cloud-event-model-registry-command")
     @CloudEventMapping(trigger = "model.events.command")
     public Uni<Void> handleModelRegistryCommand(CloudEvent<JsonObject> event) {
-        if (event == null) {
-            log.warn("Received null CloudEvent");
-            return Uni.createFrom().voidItem();
-        }
-        ModelEventsCommand command = mapper.toModelEventCommand(event);
-        return commandService.handle(command)
-//                TODO добавить нормальный обработчик ошибок
-                .onFailure().recoverWithUni(Uni.createFrom()::voidItem);
+        return ofNullable(event)
+                .map(mapper::toModelEventCommand)
+                .map(commandService::handle)
+                .map(v -> v.onFailure().recoverWithNull())
+                .orElseGet(Uni.createFrom()::voidItem);
     }
 
-
-    @Funq("model-with-version-workflow")
-    @CloudEventMapping(
-            trigger = "io.cx.model_registry.model-with-version.requested",
-            responseType = "io.cx.model_registry.model-with-version.completed"
-    )
-    public Uni<ModelWithVersionCreateResult> handleModelWithVersionRequested(
-            CloudEvent<JsonObject> event
-    ) {
-        ModelWithVersionCreateRequest request = requireValidData(
-                event,
-                ModelWithVersionCreateRequest.class,
-                "Event data must be provided"
-        );
-        return orchestrationService.createModelWithVersionIdempotent(request);
+    @Funq("handle-cloud-event-model-version-registry-command")
+    @CloudEventMapping(trigger = "model.version.events.command")
+    public Uni<Void> handleModelVersionRegistryCommand(CloudEvent<JsonObject> event) {
+        log.info("$ handleModelVersionRegistryCommand() called with: event = [{}]", event);
+        return ofNullable(event)
+                .map(mapper::toModelVersionEventCommand)
+                .map(modelVersionCommandService::handle)
+                .map(v -> v.onFailure().recoverWithNull())
+                .orElseGet(Uni.createFrom()::voidItem);
     }
 
-    @Funq("deploy-model-version-workflow")
-    @CloudEventMapping(
-            trigger = "io.cx.model_registry.deploy-model-version.requested",
-            responseType = "io.cx.model_registry.deploy-model-version.completed"
-    )
-    public Uni<DeployModelVersionResult> handleDeployModelVersionRequested(
-            CloudEvent<JsonObject> event
-    ) {
-        DeployModelVersionRequest request = requireValidData(
-                event,
-                DeployModelVersionRequest.class,
-                "Event data must be provided"
-        );
-        return orchestrationService.deployModelVersionIdempotent(request);
-    }
+//    @Funq("model-with-version-workflow")
+//    @CloudEventMapping(
+//            trigger = "io.cx.model_registry.model-with-version.requested",
+//            responseType = "io.cx.model_registry.model-with-version.completed"
+//    )
+//    public Uni<ModelWithVersionCreateResult> handleModelWithVersionRequested(
+//            CloudEvent<JsonObject> event
+//    ) {
+//        ModelWithVersionCreateRequest request = requireValidData(
+//                event,
+//                ModelWithVersionCreateRequest.class,
+//                "Event data must be provided"
+//        );
+//        return orchestrationService.createModelWithVersionIdempotent(request);
+//    }
+//
+//    @Funq("deploy-model-version-workflow")
+//    @CloudEventMapping(
+//            trigger = "io.cx.model_registry.deploy-model-version.requested",
+//            responseType = "io.cx.model_registry.deploy-model-version.completed"
+//    )
+//    public Uni<DeployModelVersionResult> handleDeployModelVersionRequested(
+//            CloudEvent<JsonObject> event
+//    ) {
+//        DeployModelVersionRequest request = requireValidData(
+//                event,
+//                DeployModelVersionRequest.class,
+//                "Event data must be provided"
+//        );
+//        return orchestrationService.deployModelVersionIdempotent(request);
+//    }
 
     private <T> T requireValidData(CloudEvent<JsonObject> event, Class<T> type, String nullMessage) {
         if (event == null || event.data() == null) {

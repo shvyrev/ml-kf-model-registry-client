@@ -1,6 +1,7 @@
 package io.cx.model_registry.proxy.client;
 
 import io.cx.platform.events.models.ModelEvents;
+import io.cx.platform.events.modelversions.ModelVersionEvents;
 import io.cx.platform.events.producer.AbstractEventProducer;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.reactive.messaging.MutinyEmitter;
@@ -17,7 +18,15 @@ public class EventProducer extends AbstractEventProducer {
     @Channel("model-events-out")
     MutinyEmitter<byte[]> modelEventsEmitter;
 
+    @Inject
+    @Channel("model-version-events-out")
+    MutinyEmitter<byte[]> modelVersionEventsEmitter;
+
     public Uni<Void> publish(ModelEvents ev){
         return publish(modelEventsEmitter, ev);
+    }
+
+    public Uni<Void> publish(ModelVersionEvents ev){
+        return publish(modelVersionEventsEmitter, ev);
     }
 }

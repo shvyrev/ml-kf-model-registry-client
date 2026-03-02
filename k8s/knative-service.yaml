@@ -75,6 +75,9 @@ spec:
     - model-events-out
     - model-commands-out
     - model-dlq-out
+    - model-version-events-out
+    - model-version-commands-out
+    - model-version-dlq-out
   delivery:
     retry: 3
     backoffPolicy: exponential
@@ -118,6 +121,7 @@ data:
   default.topic.partitions: "1"
   default.topic.replication.factor: "1"
 ---
+# Model trigger
 apiVersion: eventing.knative.dev/v1
 kind: Trigger
 metadata:
@@ -178,3 +182,66 @@ spec:
       kind: Service
       name: api-gateway
       namespace: api-gateway
+---
+# Model Version trigger
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: model-versions-registry-commands
+  namespace: serverless
+spec:
+  broker: model-registry-broker
+  filter:
+    attributes:
+      type: model.version.events.command
+  delivery:
+    retry: 3
+    backoffPolicy: exponential
+    backoffDelay: PT1S
+    deadLetterSink:
+      ref:
+        apiVersion: eventing.knative.dev/v1alpha1
+        kind: KafkaSink
+        name: model-versions-registry-dlq
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: kf-model-registry-client
+---
+apiVersion: eventing.knative.dev/v1alpha1
+kind: KafkaSink
+metadata:
+  name: model-versions-registry-dlq
+  namespace: serverless
+spec:
+  bootstrapServers:
+    - redpanda.message-broker.svc.cluster.local:9092
+  topic: model-version-dlq-out
+---
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: model-versions-registry-events
+  namespace: serverless
+spec:
+  broker: model-registry-broker
+  filter:
+    attributes:
+      type: model.version.events
+  delivery:
+    retry: 3
+    backoffPolicy: exponential
+    backoffDelay: PT1S
+    deadLetterSink:
+      ref:
+        apiVersion: eventing.knative.dev/v1alpha1
+        kind: KafkaSink
+        name: model-versions-registry-dlq
+  subscriber:
+    ref:
+      apiVersion: v1
+      kind: Service
+      name: api-gateway
+      namespace: api-gateway
+---

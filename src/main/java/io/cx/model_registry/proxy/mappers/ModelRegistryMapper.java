@@ -4,10 +4,19 @@ import io.cx.model_registry.proxy.dto.BaseResourceList;
 import io.cx.model_registry.proxy.dto.metadata.MetadataStringValue;
 import io.cx.model_registry.proxy.dto.metadata.MetadataValue;
 import io.cx.model_registry.proxy.dto.models.*;
+import io.cx.model_registry.proxy.dto.versions.ModelVersion;
+import io.cx.model_registry.proxy.dto.versions.ModelVersionCreate;
+import io.cx.model_registry.proxy.dto.versions.ModelVersionList;
+import io.cx.model_registry.proxy.dto.versions.ModelVersionState;
+import io.cx.model_registry.proxy.dto.versions.ModelVersionUpdate;
 import io.cx.platform.events.models.ModelInfo;
 import io.cx.platform.events.models.commands.CreateModelCommandPayload;
 import io.cx.platform.events.models.commands.ModelEventsCommand;
 import io.cx.platform.events.models.commands.UpdateModelCommandPayload;
+import io.cx.platform.events.modelversions.ModelVersionInfo;
+import io.cx.platform.events.modelversions.commands.CreateModelVersionCommandPayload;
+import io.cx.platform.events.modelversions.commands.ModelVersionEventsCommand;
+import io.cx.platform.events.modelversions.commands.UpdateModelVersionCommandPayload;
 import io.vertx.core.json.JsonObject;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.validation.Valid;
@@ -70,6 +79,34 @@ public class ModelRegistryMapper {
                 .orElseGet(Collections::emptyList);
     }
 
+    public ModelVersionInfo toModelVersionInfo(ModelVersion modelVersion) {
+        Objects.requireNonNull(modelVersion, "modelVersion must not be null");
+
+        String displayName = metadataString(modelVersion.customProperties(), DISPLAY_NAME_CUSTOM_PROPERTIES_KEY)
+                .orElse(modelVersion.name());
+
+        return new ModelVersionInfo(
+                modelVersion.id(),
+                modelVersion.registeredModelId(),
+                displayName,
+                modelVersion.description(),
+                modelVersion.author(),
+                ofNullable(modelVersion.state()).map(Enum::name).orElse(null),
+                modelVersion.createTimeSinceEpoch(),
+                modelVersion.lastUpdateTimeSinceEpoch()
+        );
+    }
+
+    public List<ModelVersionInfo> toModelVersionInfoList(ModelVersionList values) {
+        return ofNullable(values)
+                .map(BaseResourceList::items)
+                .filter(not(List::isEmpty))
+                .map(items -> items.stream()
+                        .filter(Objects::nonNull)
+                        .map(this::toModelVersionInfo)
+                        .toList())
+                .orElseGet(Collections::emptyList);
+    }
 
     public RegisteredModelCreate toCreateModelRequest(ModelEventsCommand.CreateModelCommand command) {
         CreateModelCommandPayload payload = command.payload();
@@ -123,6 +160,40 @@ public class ModelRegistryMapper {
                 .customProperties(props);
     }
 
+    public ModelVersionCreate toCreateModelVersionRequest(ModelVersionEventsCommand.CreateModelVersionCommand command) {
+        CreateModelVersionCommandPayload payload = command.payload();
+
+        HashMap<String, @Valid MetadataValue> props = new HashMap<>();
+        ofNullable(payload)
+                .map(CreateModelVersionCommandPayload::name)
+                .ifPresent(s -> props.put(DISPLAY_NAME_CUSTOM_PROPERTIES_KEY, new MetadataStringValue(s)));
+
+        ofNullable(payload)
+                .map(CreateModelVersionCommandPayload::labels)
+                .map(values -> String.join(DELIMITER, values))
+                .ifPresent(s -> props.put(LABELS_CUSTOM_PROPERTIES_KEY, new MetadataStringValue(s)));
+
+        ModelVersionCreate request = new ModelVersionCreate();
+        request.registeredModelId(payload.modelId());
+        request.name(UUID.randomUUID().toString());
+        request.description(payload.description());
+        request.customProperties(props);
+        request.author(payload.author());
+        return request;
+    }
+
+    public ModelVersionUpdate toUpdateModelVersionRequest(ModelVersionEventsCommand.UpdateModelVersionCommand command) {
+        UpdateModelVersionCommandPayload payload = command.payload();
+        if (payload == null) {
+            throw new IllegalArgumentException("update model version request is empty");
+        }
+
+        return (ModelVersionUpdate) new ModelVersionUpdate()
+                .author(payload.author())
+                .state(parseModelVersionState(payload.state()))
+                .description(payload.description());
+    }
+
     private RegisteredModelState parseState(String state) {
         if (state == null || state.isBlank()) {
             return null;
@@ -135,4 +206,24 @@ public class ModelRegistryMapper {
         }
     }
 
+    private ModelVersionState parseModelVersionState(String state) {
+        if (state == null || state.isBlank()) {
+            return null;
+        }
+        try {
+            return ModelVersionState.valueOf(state.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            log.warn("Unknown model version state '{}', ignoring", state);
+            return null;
+        }
+    }
+
+    private Optional<String> metadataString(Map<String, MetadataValue> values, String key) {
+        return ofNullable(values)
+                .map(map -> map.get(key))
+                .filter(MetadataStringValue.class::isInstance)
+                .map(MetadataStringValue.class::cast)
+                .map(MetadataStringValue::string_value)
+                .filter(not(String::isBlank));
+    }
 }

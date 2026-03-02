@@ -19,6 +19,9 @@ public class ModelVersionCreate extends BaseResourceCreate {
     @JsonProperty("registeredModelId")
     private String registeredModelId;
 
+    @JsonProperty("author")
+    private String author;
+
     @AssertTrue(message = "'name' must be provided")
     @JsonIgnore
     public boolean isNameValid() {

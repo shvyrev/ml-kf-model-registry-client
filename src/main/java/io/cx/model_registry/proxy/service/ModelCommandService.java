@@ -1,9 +1,6 @@
 package io.cx.model_registry.proxy.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.cx.model_registry.proxy.client.EventProducer;
-import io.cx.model_registry.proxy.dto.metadata.MetadataValue;
 import io.cx.model_registry.proxy.dto.models.RegisteredModel;
 import io.cx.model_registry.proxy.dto.models.RegisteredModelCreate;
 import io.cx.model_registry.proxy.dto.models.RegisteredModelList;
@@ -18,46 +15,31 @@ import io.cx.platform.events.models.commands.UpdateModelCommandPayload;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.WebApplicationException;
-import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 
 import static java.util.Optional.ofNullable;
 
-@Slf4j
 @ApplicationScoped
-public class ModelEventsCommandService {
+public class ModelCommandService {
 
     @Inject
     ModelRegistryMapper mapper;
-
-    private static final TypeReference<Map<String, MetadataValue>> METADATA_MAP = new TypeReference<>() {
-    };
 
     @Inject
     ModelService modelService;
 
     @Inject
-    ObjectMapper objectMapper;
-
-    @Inject
     EventProducer eventProducer;
 
     public Uni<Void> handle(ModelEventsCommand command) {
-        if (command == null) {
-            log.warn("Received null ModelEventsCommand");
-            return Uni.createFrom().voidItem();
-        }
-        return switch (command) {
+        return dispatchNullable(command, cmd -> switch (cmd) {
             case ModelEventsCommand.CreateModelCommand create -> handleCreate(create);
             case ModelEventsCommand.UpdateModelCommand update -> handleUpdate(update);
             case ModelEventsCommand.ListModelsQuery list -> handleList(list);
             case ModelEventsCommand.GetModelQuery get -> handleGet(get);
-        };
+        });
     }
 
     private Uni<Void> handleCreate(ModelEventsCommand.CreateModelCommand command) {
@@ -69,10 +51,7 @@ public class ModelEventsCommandService {
 
     private Uni<Void> handleUpdate(ModelEventsCommand.UpdateModelCommand command) {
         UpdateModelCommandPayload payload = command.payload();
-        log.info("$ !!! " + payload);
         RegisteredModelUpdate request = mapper.toUpdateModelRequest(command);
-
-        log.info("$ SUKA!!! :  {}", request);
 
         return modelService.updateModel(payload.modelId(), request)
                 .chain(registeredModel -> sendResponse(registeredModel, info -> ModelEvents.ModelResponse.of(command, info)));
@@ -113,30 +92,9 @@ public class ModelEventsCommandService {
                 .orElseGet(Uni.createFrom()::voidItem);
     }
 
-    private Map<String, MetadataValue> toMetadata(Map<String, Object> customProperties) {
-        if (customProperties == null || customProperties.isEmpty()) {
-            return null;
-        }
-        return objectMapper.convertValue(customProperties, METADATA_MAP);
-    }
-
-    private Uni<ModelInfo> handleConflict(WebApplicationException exception, String action, String target) {
-        Response response = exception.getResponse();
-        int status = response != null ? response.getStatus() : -1;
-        String body = null;
-        if (response != null && response.hasEntity()) {
-            try {
-                body = response.readEntity(String.class);
-            } catch (Exception readEx) {
-                log.warn("Failed to read error response body for action={} target={}", action, target, readEx);
-            }
-        }
-        log.info("$ resp: status={}, message={}, body={}", status, exception.getMessage(), body);
-
-        if (status == 409) {
-            log.warn("Conflict on {}: target={}", action, target);
-            return Uni.createFrom().nullItem();
-        }
-        return Uni.createFrom().failure(exception);
+    private <T> Uni<Void> dispatchNullable(T command, Function<T, Uni<Void>> dispatcher) {
+        return ofNullable(command)
+                .map(dispatcher)
+                .orElseGet(Uni.createFrom()::voidItem);
     }
 }
