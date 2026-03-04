@@ -19,6 +19,14 @@ mp:
         cloud-events-mode: binary
         cloud-events-source: "urn:service:${quarkus.application.name}"
         cloud-events-type: "model.version.events"
+      artifact-events-out:
+        connector: smallrye-kafka
+        topic: artifact-events-out
+        key.serializer: org.apache.kafka.common.serialization.StringSerializer
+        value.serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+        cloud-events-mode: binary
+        cloud-events-source: "urn:service:${quarkus.application.name}"
+        cloud-events-type: "artifact.events"
     connector.smallrye-kafka.bootstrap.servers: ${KAFKA_BOOTSTRAP_SERVERS:redpanda.message-broker.svc.cluster.local:9092}
 
 quarkus:

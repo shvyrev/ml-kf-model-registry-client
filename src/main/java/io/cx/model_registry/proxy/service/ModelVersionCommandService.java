@@ -63,7 +63,7 @@ public class ModelVersionCommandService {
 
     private Uni<Void> handleList(ModelVersionEventsCommand.ListModelVersionsQuery query) {
         ListModelVersionsQueryPayload payload = query.payload();
-        log.info("$ query :  {}", payload);
+
         return versionsService.listModelVersions(
                         payload.filterQuery(),
                         payload.pageSize(),

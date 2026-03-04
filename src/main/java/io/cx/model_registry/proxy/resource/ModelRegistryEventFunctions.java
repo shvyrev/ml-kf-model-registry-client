@@ -2,6 +2,7 @@ package io.cx.model_registry.proxy.resource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.cx.model_registry.proxy.mappers.CloudEventToCommandMapper;
+import io.cx.model_registry.proxy.service.ArtifactCommandService;
 import io.cx.model_registry.proxy.service.ModelCommandService;
 import io.cx.model_registry.proxy.service.ModelVersionCommandService;
 import io.cx.model_registry.proxy.service.ModelRegistryOrchestrationService;
@@ -41,6 +42,9 @@ public class ModelRegistryEventFunctions {
     @Inject
     ModelVersionCommandService modelVersionCommandService;
 
+    @Inject
+    ArtifactCommandService artifactCommandService;
+
     @Funq("handle-cloud-event-model-registry-command")
     @CloudEventMapping(trigger = "model.events.command")
     public Uni<Void> handleModelRegistryCommand(CloudEvent<JsonObject> event) {
@@ -58,6 +62,17 @@ public class ModelRegistryEventFunctions {
         return ofNullable(event)
                 .map(mapper::toModelVersionEventCommand)
                 .map(modelVersionCommandService::handle)
+                .map(v -> v.onFailure().recoverWithNull())
+                .orElseGet(Uni.createFrom()::voidItem);
+    }
+
+    @Funq("handle-cloud-event-artifact-registry-command")
+    @CloudEventMapping(trigger = "artifact.events.command")
+    public Uni<Void> handleArtifactRegistryCommand(CloudEvent<JsonObject> event) {
+        log.info("$ handleArtifactRegistryCommand() called with: event = [{}]", event);
+        return ofNullable(event)
+                .map(mapper::toArtifactEventCommand)
+                .map(artifactCommandService::handle)
                 .map(v -> v.onFailure().recoverWithNull())
                 .orElseGet(Uni.createFrom()::voidItem);
     }

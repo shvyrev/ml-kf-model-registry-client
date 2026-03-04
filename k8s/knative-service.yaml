@@ -78,6 +78,9 @@ spec:
     - model-version-events-out
     - model-version-commands-out
     - model-version-dlq-out
+    - artifact-events-out
+    - artifact-commands-out
+    - artifact-dlq-out
   delivery:
     retry: 3
     backoffPolicy: exponential
@@ -238,6 +241,68 @@ spec:
         apiVersion: eventing.knative.dev/v1alpha1
         kind: KafkaSink
         name: model-versions-registry-dlq
+  subscriber:
+    ref:
+      apiVersion: v1
+      kind: Service
+      name: api-gateway
+      namespace: api-gateway
+---
+# Artifact trigger
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: artifacts-commands
+  namespace: serverless
+spec:
+  broker: model-registry-broker
+  filter:
+    attributes:
+      type: artifact.events.command
+  delivery:
+    retry: 3
+    backoffPolicy: exponential
+    backoffDelay: PT1S
+    deadLetterSink:
+      ref:
+        apiVersion: eventing.knative.dev/v1alpha1
+        kind: KafkaSink
+        name: artifacts-dlq
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: kf-model-registry-client
+---
+apiVersion: eventing.knative.dev/v1alpha1
+kind: KafkaSink
+metadata:
+  name: artifacts-dlq
+  namespace: serverless
+spec:
+  bootstrapServers:
+    - redpanda.message-broker.svc.cluster.local:9092
+  topic: artifact-dlq-out
+---
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: artifacts-events
+  namespace: serverless
+spec:
+  broker: model-registry-broker
+  filter:
+    attributes:
+      type: artifact.events
+  delivery:
+    retry: 3
+    backoffPolicy: exponential
+    backoffDelay: PT1S
+    deadLetterSink:
+      ref:
+        apiVersion: eventing.knative.dev/v1alpha1
+        kind: KafkaSink
+        name: artifacts-dlq
   subscriber:
     ref:
       apiVersion: v1
